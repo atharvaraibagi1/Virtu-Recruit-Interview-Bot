@@ -36,14 +36,6 @@ def process_resume(pdf_path):
     resume_segments = segment_text(text)
     return resume_segments
 
-# if __name__ == "__main__":
-#     pdf_path = r'C:\Users\Atharva\Downloads\Atharva_Raibagi_Resume.pdf'
-#     resume_dict = process_resume(pdf_path)
-    
-#     print("Extracted Resume Segments:")
-#     for key, value in resume_dict.items():
-#         print(f"{key}: \n{value}\n")
-
 st.title("Virtu Recruit - AI Interview Bot")
 
 st.write("Please upload your resume (PDF format) below:")
@@ -51,13 +43,13 @@ st.write("Please upload your resume (PDF format) below:")
 resume_pdf = st.file_uploader("Upload Resume", type=['pdf'])
 
 if resume_pdf is not None:
-    st.write("Processing Resume")
     resume_dict = process_resume(resume_pdf)
+
+    st.header(":scroll: Extracted contents from your resume:")
 
     for key, value in resume_dict.items():
         st.subheader(key)
         st.write(value)
-
 
 
 
