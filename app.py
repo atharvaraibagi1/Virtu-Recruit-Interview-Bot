@@ -11,6 +11,61 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Set page configuration
+st.set_page_config(
+    page_title="VirtuRecruit - AI Interview Bot",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS
+st.markdown("""
+    <style>
+        .main {
+            padding: 2rem;
+        }
+        .stButton > button {
+            width: 100%;
+            border-radius: 20px;
+            height: 3em;
+            background-color: #ff4b4b;
+            color: white;
+            font-weight: bold;
+            border: none;
+            transition: all 0.3s ease-in-out;
+        }
+        .stButton > button:hover {
+            background-color: #ff3333;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .css-1d391kg {
+            padding: 2rem;
+            border-radius: 15px;
+            background-color: #f7f7f7;
+        }
+        .stAudio {
+            margin: 1rem 0;
+        }
+        h1 {
+            color: #1E1E1E;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .subheader {
+            color: #4A4A4A;
+            font-size: 1.2em;
+            margin: 1.5rem 0;
+        }
+        .progress-container {
+            padding: 1rem;
+            background-color: #f0f2f6;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Get API keys from environment variables
 ELEVEN_LABS_API_KEY = os.getenv("ELEVEN_LABS_API_KEY")
 VOICE_ID = os.getenv("VOICE_ID")
@@ -50,34 +105,35 @@ def process_resume(uploaded_file):
 def text_to_speech(text, output_file="output.mp3"):
     """Convert text to speech using Eleven Labs API."""
     if not ELEVEN_LABS_API_KEY or not VOICE_ID:
-        st.error("Missing API keys. Please check your .env file.")
+        st.error("🚫 Missing API keys. Please check your .env file.")
         return False
 
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
-    headers = {
-        "Accept": "audio/mpeg",
-        "Content-Type": "application/json",
-        "xi-api-key": ELEVEN_LABS_API_KEY,
-    }
-    data = {
-        "text": text,
-        "model_id": "eleven_monolingual_v1",
-        "voice_settings": {
-            "stability": 0.75,
-            "similarity_boost": 0.75,
-        },
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
+    with st.spinner("🎵 Generating audio..."):
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
+        headers = {
+            "Accept": "audio/mpeg",
+            "Content-Type": "application/json",
+            "xi-api-key": ELEVEN_LABS_API_KEY,
+        }
+        data = {
+            "text": text,
+            "model_id": "eleven_monolingual_v1",
+            "voice_settings": {
+                "stability": 0.75,
+                "similarity_boost": 0.75,
+            },
+        }
         
-        with open(output_file, "wb") as f:
-            f.write(response.content)
-        return True
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error in API call: {str(e)}")
-        return False
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            
+            with open(output_file, "wb") as f:
+                f.write(response.content)
+            return True
+        except requests.exceptions.RequestException as e:
+            st.error(f"🚫 Error in API call: {str(e)}")
+            return False
 
 def play_audio(question):
     """Generate and play audio for a given question."""
@@ -89,7 +145,7 @@ def play_audio(question):
             st.audio(audio_bytes, format="audio/mp3")
             audio_file.close()
         except Exception as e:
-            st.error(f"Error playing audio: {str(e)}")
+            st.error(f"🚫 Error playing audio: {str(e)}")
 
 # Initialize session state
 if 'question_index' not in st.session_state:
@@ -103,95 +159,109 @@ if 'current_response' not in st.session_state:
 if 'next_clicked' not in st.session_state:
     st.session_state.next_clicked = False
 
-# Create output directory for audio files if it doesn't exist
+# Create output directory for audio files
 if not os.path.exists('audio_outputs'):
     os.makedirs('audio_outputs')
 
 # Main UI
-st.title("Virtu Recruit - AI Interview Bot")
-st.write("Please upload your resume (PDF format) below:")
+st.markdown("<h1>🤖 VirtuRecruit - AI Interview Bot</h1>", unsafe_allow_html=True)
 
-resume_pdf = st.file_uploader("Upload Resume", type=['pdf'])
+# Sidebar with instructions
+with st.sidebar:
+    st.markdown("### 📝 Instructions")
+    st.info("""
+    1. Upload your resume in PDF format
+    2. Review the extracted information
+    3. Click 'Start Interview' when ready
+    4. Listen to each question
+    5. Record your response
+    6. Click 'Next Question' to continue
+    """)
+    
+    st.markdown("### 🎯 Interview Progress")
+    questions = [
+        "Hi, so you are interviewing for the position of Data Scientist. Tell me something about yourself.",
+        "Can you walk me through one of the most interesting projects you've worked on?",
+        "What motivates you to pursue a career in data science?",
+        "How do you handle a situation where the data provided to you is incomplete or inconsistent?",
+    ]
+    # Fix: Convert percentage to decimal (0.0 to 1.0)
+    progress = st.session_state.question_index / len(questions)
+    st.progress(progress)
+    st.markdown(f"Question {st.session_state.question_index + 1} of {len(questions)}")
 
-questions = [
-    "Hi, so you are interviewing for the position of Data Scientist. Tell me something about yourself.",
-    "Can you walk me through one of the most interesting projects you've worked on?",
-    "What motivates you to pursue a career in data science?",
-    "How do you handle a situation where the data provided to you is incomplete or inconsistent?",
-]
-
-# Function to handle moving to next question
-def next_question():
-    st.session_state.question_index += 1
-    st.session_state.current_response = None
-    st.session_state.next_clicked = True
+# Main content
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    resume_pdf = st.file_uploader("📄 Upload Your Resume (PDF format)", type=['pdf'])
 
 if resume_pdf is not None:
     try:
-        resume_dict = process_resume(resume_pdf)
+        with st.spinner("📑 Processing resume..."):
+            resume_dict = process_resume(resume_pdf)
         
-        st.header(":scroll: Extracted contents from your resume-")
+        st.markdown("### 📋 Extracted Resume Contents")
         for key, value in resume_dict.items():
-            st.subheader(key)
-            st.write(value)
+            with st.expander(f"📌 {key}"):
+                st.write(value)
         
-        if not st.session_state.interview_started and st.button("Start Interview!"):
-            st.session_state.interview_started = True
+        if not st.session_state.interview_started:
+            st.markdown("### Ready to begin?")
+            if st.button("🎯 Start Interview!", key="start_interview"):
+                st.session_state.interview_started = True
+                st.experimental_rerun()
             
     except Exception as e:
-        st.error(f"Error processing resume: {str(e)}")
+        st.error(f"🚫 Error processing resume: {str(e)}")
 
 if st.session_state.interview_started:
     if st.session_state.question_index < len(questions):
-        col1, col2 = st.columns(2)
+        st.markdown("---")
+        question = questions[st.session_state.question_index]
         
-        with col1:
-            question = questions[st.session_state.question_index]
-            st.subheader(f"Question {st.session_state.question_index + 1}:")
-            st.write(question)
-            play_audio(question)
-
-        # Handle audio recording
+        # Question display
+        st.markdown(f"### 💭 Question {st.session_state.question_index + 1}:")
+        st.info(question)
+        play_audio(question)
+        
+        # Recording section
+        st.markdown("### 🎤 Your Response")
         audio_data = st.audio_input(
-            f"Record your response to Question {st.session_state.question_index + 1}",
+            "Record your answer",
             key=f"audio_{st.session_state.question_index}"
         )
 
-        # Process new recording
         if audio_data is not None:
             try:
-                # Generate unique filename in the audio_outputs directory
                 unique_filename = os.path.join('audio_outputs', f"response_{uuid.uuid4().hex}.wav")
                 
-                # Save the audio data
-                if isinstance(audio_data, (bytes, bytearray)):
-                    with open(unique_filename, "wb") as f:
+                with open(unique_filename, "wb") as f:
+                    if isinstance(audio_data, (bytes, bytearray)):
                         f.write(audio_data)
-                else:
-                    with open(unique_filename, "wb") as f:
+                    else:
                         f.write(audio_data.read())
                 
-                # Update session state
                 st.session_state.responses[st.session_state.question_index] = unique_filename
                 
-                # Display the recorded audio
-                # st.write("Your recorded response:")
-                # st.audio(unique_filename, format="audio/wav")
-                
-                # Show next question button
-                if st.button("Next Question", on_click=next_question):
-                    st.rerun()
+                st.success("✅ Response recorded successfully!")
+                if st.button("➡️ Next Question"):
+                    st.session_state.question_index += 1
+                    st.session_state.current_response = None
+                    st.session_state.next_clicked = True
+                    st.experimental_rerun()
                     
             except Exception as e:
-                st.error(f"Error processing audio: {str(e)}")
+                st.error(f"🚫 Error processing audio: {str(e)}")
                 
-    if st.session_state.question_index >= len(questions):
-        st.success("🎉 Congratulations! You have completed the interview.")
+    else:
+        st.markdown("---")
+        st.markdown("## 🎉 Interview Complete!")
+        st.success("Thank you for completing the interview. Here are your responses:")
         
-        st.subheader("Your Interview Responses")
         for i, response_file in st.session_state.responses.items():
-            st.write(f"Question {i + 1}: {questions[i]}")
-            try:
-                st.audio(response_file, format="audio/wav")
-            except Exception as e:
-                st.error(f"Error playing response {i + 1}: {str(e)}")
+            with st.expander(f"Question {i + 1}"):
+                st.write(questions[i])
+                try:
+                    st.audio(response_file, format="audio/wav")
+                except Exception as e:
+                    st.error(f"🚫 Error playing response {i + 1}: {str(e)}")
