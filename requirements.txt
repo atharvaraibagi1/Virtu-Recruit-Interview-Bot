@@ -4,3 +4,7 @@ pypdf
 streamlit
 requests==2.32.3
 uuid
+transformers
+torch
+accelerate
+openai
