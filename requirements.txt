@@ -6,6 +6,7 @@ requests==2.32.3
 uuid
 transformers
 torch
+pylance
 accelerate
 openai
 python-dotenv
@@ -15,3 +16,4 @@ keras
 scipy
 scikit-learn
 soundfile
+plotly
