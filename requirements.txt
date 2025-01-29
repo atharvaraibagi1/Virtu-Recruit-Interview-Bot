@@ -8,3 +8,10 @@ transformers
 torch
 accelerate
 openai
+python-dotenv
+librosa
+tensorflow
+keras
+scipy
+scikit-learn
+soundfile
